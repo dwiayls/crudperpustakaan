@@ -8,25 +8,30 @@ use Illuminate\Http\Request;
 
 class BookController extends Controller
 {
-public function index(Request $request)
-{
-    $query = Book::with('category');
+    public function index(Request $request)
+    {
+        $query = Book::with('category');
 
-    // Search berdasarkan judul
-    if ($request->search) {
-        $query->where('judul', 'like', '%' . $request->search . '%');
+        if ($request->search) {
+            $query->where('judul', 'like', '%' . $request->search . '%');
+        }
+
+        if ($request->category_id) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        $books = $query->paginate(5)->withQueryString();
+        $categories = Category::all();
+        $totalBooks = Book::count();
+        $totalPerCategory = Category::withCount('books')->get();
+
+        return view('books.index', compact(
+            'books',
+            'categories',
+            'totalBooks',
+            'totalPerCategory'
+        ));
     }
-
-    // Filter berdasarkan kategori
-    if ($request->category_id) {
-        $query->where('category_id', $request->category_id);
-    }
-
-    $books = $query->get();
-    $categories = Category::all();
-
-    return view('books.index', compact('books', 'categories'));
-}
 
     public function create()
     {
@@ -37,46 +42,59 @@ public function index(Request $request)
     public function store(Request $request)
     {
         $request->validate([
-            'category_id' => 'required|numeric',
-            'judul' => 'required',
-            'penulis' => 'required',
-            'tahun_terbit' => 'required|numeric',
-            'stok' => 'required|numeric'
+            'category_id'   => 'required',
+            'judul'         => 'required',
+            'penulis'       => 'required',
+            'tahun_terbit'  => 'required|numeric',
+            'stok'          => 'required|numeric',
         ]);
 
         Book::create($request->all());
 
         return redirect()->route('books.index')
-                ->with('success','Data berhasil ditambahkan');
+            ->with('success', 'Data berhasil ditambahkan');
     }
 
-    public function edit(Book $book)
+    // =========================
+    // EDIT
+    // =========================
+    public function edit($id)
     {
+        $book = Book::findOrFail($id);
         $categories = Category::all();
+
         return view('books.edit', compact('book', 'categories'));
     }
 
-    public function update(Request $request, Book $book)
+    // =========================
+    // UPDATE
+    // =========================
+    public function update(Request $request, $id)
     {
         $request->validate([
-            'category_id' => 'required|numeric',
-            'judul' => 'required',
-            'penulis' => 'required',
-            'tahun_terbit' => 'required|numeric',
-            'stok' => 'required|numeric'
+            'category_id'   => 'required',
+            'judul'         => 'required',
+            'penulis'       => 'required',
+            'tahun_terbit'  => 'required|numeric',
+            'stok'          => 'required|numeric',
         ]);
 
+        $book = Book::findOrFail($id);
         $book->update($request->all());
 
         return redirect()->route('books.index')
-                ->with('success','Data berhasil diupdate');
+            ->with('success', 'Data berhasil diupdate');
     }
 
-    public function destroy(Book $book)
+    // =========================
+    // DELETE
+    // =========================
+    public function destroy($id)
     {
+        $book = Book::findOrFail($id);
         $book->delete();
 
         return redirect()->route('books.index')
-                ->with('success','Data berhasil dihapus');
+            ->with('success', 'Data berhasil dihapus');
     }
 }
